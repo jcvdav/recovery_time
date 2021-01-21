@@ -6,56 +6,43 @@ library(here)
 library(tidyverse)
 
 # Load data
+# MHW effects
+effects <- readRDS(here("data", "MHW_effects_on_inverts.rds"))
+
 parameters <- read.csv(here("data", "parameters.csv"),
                        stringsAsFactors = F) %>% 
-  mutate(species = ifelse(species == "Strongylocentrotus spp", "Sea urchins", species))
-
-# Define functions
-## logistic growth function with harvesting and
-## a spatially implicit reserve
-grow <- function(x, r, K, fmsy, R) {
-  res <- x + (r * x * (1 - (x / K))) - ((1 - R) * x * fmsy)
-  return(res)
-}
-
-
-## Iterate through time for each species
-move <- function(nyears, r, K, fmsy, R) {
-  x0 <- 0.2 * K
-  X <- Eq <- numeric(nyears)
-  X[1] <- x0
-  Eq[1] <- F
+  mutate(species = ifelse(species == "Strongylocentrotus spp", "Sea urchins", species)) %>% 
+  left_join(effects, by = "species") %>% 
+  drop_na(MHW_effect) %>% 
+  replace_na(replace = list(MHW_effect = 0))
   
-  for(i in 2:nyears) {
-    X[i] <- grow(x = X[i - 1], r = r, K = K, fmsy = fmsy, R = R)
-    Eq[i] <- X[i] >= (0.5 * K)
-  }
-  
-  results <- tibble(X,
-                    time = 1:nyears,
-                    Eq)
-  
-  return(results)
-}
+
+cc_scenarios <- readRDS(here("data", "MHW_models.rds")) %>% 
+  filter(str_detect(dep_var, "Mean"))
 
 nyears <- 50
 
-results <- parameters %>% 
-  mutate(R = 0.1) %>% 
-  rbind(parameters %>% mutate(R = 0.3)) %>% 
-  rbind(parameters %>% mutate(R = 1)) %>%
+results <- expand_grid(parameters, cc_scenarios, R = c(0.1, 0.3, 1)) %>% 
   mutate(simulation = purrr::pmap(.l = list(nyears = nyears,
                                             r = r_mean,
                                             K = k_mean,
                                             fmsy = fmsy_lo,
-                                            R = R),
-                                  .f = move)) %>% 
+                                            R = R,
+                                            delta = MHW_effect,
+                                            model = model,
+                                            nsim = 1e4),
+                                  .f = sim_reserve)) %>% 
+  select(species, SSP, simulation, contains("mean"), R) %>% 
   unnest(cols = simulation) %>% 
   mutate(Xnorm = X / k_mean) %>% 
   mutate(R = paste0("Reserve = ", R * 100, "%"),
          R = fct_relevel(R, "Reserve = 100%", after = Inf))
 
-
+summarize_results <- results %>% 
+  group_by(species, time, SSP, R) %>% 
+  summarize(x_mean = mean(Xnorm, na.rm = T),
+            x_2.5 = quantile(Xnorm, 0.05, na.rm = T),
+            x_97.5 = quantile(Xnorm, 0.95, na.rm = T))
 
 (time_to_k <- results %>% 
     filter(Eq == 1) %>%
@@ -80,23 +67,26 @@ ggsave(plot = time_to_k,
        height = 5,
        width = 6)
 
-(recovery_plot <- results %>% 
-    ggplot(aes(x = time, y = Xnorm, color = species)) +
+(recovery_plot <- summarize_results %>% 
+    ggplot(aes(x = time, y = x_mean, color = species, fill = species)) +
+    geom_ribbon(aes(ymin = x_2.5, ymax = x_97.5), alpha = 0.25, size = 0.1) +
     geom_line(size = 1) +
     theme_bw() +
     scale_y_continuous(labels = scales::percent,
                        limits = c(0, 1)) +
-    scale_x_continuous(breaks = seq(0, 30, by = 5)) +
+    # scale_x_continuous(breaks = seq(0, 30, by = 5)) +
     labs(x = "Time (years)", y = "Normalized biomass (B / K)") +
     scale_color_brewer(palette = "Set1") +
+    scale_fill_brewer(palette = "Set1") +
     theme(strip.background = element_blank(),
           legend.position = "bottom",
           text = element_text(size = 10)) +
     guides(color = guide_legend(title = "Species",
                                 ncol = 2,
                                 label.theme = element_text(face = "italic",
-                                                           size = 8))) +
-    facet_wrap(~R, ncol = 1))
+                                                           size = 8)),
+           fill = guide_legend(title = "Species")) +
+    facet_grid(SSP~R))
 
 
 ggsave(plot = recovery_plot,
