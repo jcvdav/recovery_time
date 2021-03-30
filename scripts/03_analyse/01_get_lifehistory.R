@@ -40,7 +40,7 @@ my_mcsy2 <- function(data) {
   return(results)
 }
 
-plan(multiprocess)
+plan(multisession, workers = parallel::detectCores() - 2)
 parameters <- cona %>% 
   mutate(spp = NombreCientifico) %>% 
   group_by(NombreCientifico) %>% 
