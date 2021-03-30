@@ -36,7 +36,7 @@ lapply(f, gMHW) %>%
   filter(Year > 2019) %>% 
   pivot_wider(names_from = SSP, values_from = Cum_Int, values_fill = 0) %>% 
   data.frame() %>% 
-  write.csv("Projected MHW Cumulative Intensity.csv", row.names = FALSE)
+  write.csv(here::here("data", "Projected_MHW_Cumulative_Intensity.csv"), row.names = FALSE)
 
 # Plots ------------------------------------------------------------
 
