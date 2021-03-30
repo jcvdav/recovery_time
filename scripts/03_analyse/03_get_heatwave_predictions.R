@@ -80,11 +80,18 @@ a <- dat %>%
 
 
 # Simulate one time series
+# Simulate one time series
 sFun <- function(mod) { # Simulate observations from one of these models (mod) for a
   yr <- mod$data$Year
-  n_yr <- length(unique(yr))
-  simDat <- simulate(ssp585_Mean)$sim_1
-  d <- data.frame(Year = yr[1:n_yr], Pred = simDat[1:n_yr])
+  yrs <- unique(yr)
+  # n_yr <- length(yrs)
+  simDat <- simulate(mod)$sim_1
+  pd <- lapply(yrs, function(x) {
+    i1 <- which(yr == x) # Which indices of yr <=> simDat contain the year of interest
+    iN <- length(i1) # How many indices are there
+    return(i1[sample(1:iN, 1)]) # Return a random index for each year
+  })
+  d <- data.frame(Year = yrs, Pred = simDat[unlist(pd)]) # A data frame of random simulations for each year
   return(d)
 }
 
