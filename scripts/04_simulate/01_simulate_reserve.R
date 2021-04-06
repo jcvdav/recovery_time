@@ -123,4 +123,3 @@ lazy_ggsave(plot = recovery_plot,
            file = "recovery_plot",
            height = 20,
            width = 16)
-
