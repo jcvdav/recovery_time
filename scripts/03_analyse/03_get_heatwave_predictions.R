@@ -48,7 +48,8 @@ cmip <- lapply(f, gMHW) %>%
 ggplot(cmip, aes(x = Year, y = Cum_Int, colour = SSP)) +
   geom_line() +
   geom_hline(yintercept = oisst$Cum_Int) +
-  facet_wrap(vars(Model))
+  facet_wrap(vars(Model)) +
+  theme_bw()
 
 
 # Models ------------------------------------------------------------------
