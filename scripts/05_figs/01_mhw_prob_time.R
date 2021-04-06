@@ -1,3 +1,4 @@
+library(startR)
 library(here)
 library(tidyverse)
 
@@ -10,15 +11,11 @@ simulations <- MHW_models %>%
   unnest(cols = mhw) %>% 
   pivot_longer(cols = contains("sim"), values_to = "MHW", names_to = "sim")
 
-ggplot(data = simulations,
+plot <- ggplot(data = simulations,
        mapping = aes(x = year, y = MHW, color = SSP, fill = SSP)) +
   stat_summary(geom = "line", fun = "mean") +
   theme_bw() +
-  startR::ggtheme_plot() +
+  ggtheme_plot() +
   scale_color_brewer(palette = "Set1")
 
-simulations %>% 
-  group_by(year, SSP) %>% 
-  summarize(n = sum(MHW) / length(MHW)) %>% 
-  ggplot(aes(x = year, y = SSP, fill = n)) +
-  geom_point(shape = 21)
+lazy_ggsave(plot = plot, filename = "mhw_plot_time")
