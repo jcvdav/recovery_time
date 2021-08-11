@@ -16,6 +16,8 @@ plot <- ggplot(data = simulations,
   stat_summary(geom = "line", fun = "mean") +
   theme_bw() +
   ggtheme_plot() +
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(x = "Year", y = "Probability")
 
 lazy_ggsave(plot = plot, filename = "mhw_plot_time")

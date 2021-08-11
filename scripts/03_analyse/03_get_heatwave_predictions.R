@@ -45,11 +45,11 @@ oisst <- read.csv(here::here("data", "MHW_Dave", "OISST_Cum_Int.csv")) %>%
 cmip <- lapply(f, gMHW) %>% 
   bind_rows() %>% 
   filter(Year > 2019)
-ggplot(cmip, aes(x = Year, y = Cum_Int, colour = SSP)) +
-  geom_line() +
-  geom_hline(yintercept = oisst$Cum_Int) +
-  facet_wrap(vars(Model)) +
-  theme_bw()
+# ggplot(cmip, aes(x = Year, y = Cum_Int, colour = SSP)) +
+#   geom_line() +
+#   geom_hline(yintercept = oisst$Cum_Int) +
+#   facet_wrap(vars(Model)) +
+#   theme_bw()
 
 
 # Models ------------------------------------------------------------------
@@ -73,11 +73,7 @@ ssp126_Mean <- glm(ExceedMean ~ Year, family = binomial, data = filter(dat, SSP 
 ssp245_Mean <- glm(ExceedMean ~ Year, family = binomial, data = filter(dat, SSP == "ssp245"))
 ssp585_Mean <- glm(ExceedMean ~ Year, family = binomial, data = filter(dat, SSP == "ssp585"))
 
-a <- dat %>% 
-  group_by(SSP) %>% 
-  nest() %>% 
-  expand_grid(fml = c("ExceedMean ~ Year", "Exceed2015 ~ Year", "Exceed2014 ~ Year")) %>% 
-  mutate(model = map2(.x = fml, .y = data, .f = glm, family = "binomial"))
+
 
 
 # Simulate one time series
@@ -97,7 +93,7 @@ sFun <- function(mod) { # Simulate observations from one of these models (mod) f
 }
 
 # Example
-sFun(ssp126_Mean)
+# sFun(ssp126_Mean)
 
 ##### Sim wrap
 
