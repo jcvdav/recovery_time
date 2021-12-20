@@ -4,6 +4,7 @@
 library(startR)
 library(here)
 library(datalimited2)
+library(readxl)
 library(furrr)
 library(tidyverse)
 
@@ -14,6 +15,16 @@ cona <- read.csv(here("data", "conapesca_baja_ts.csv"),
   mutate(n = n()) %>%  
   ungroup() %>% 
   filter(n > 5)
+
+dat <- tibble(filename = list.files(here("data", "poncho_data"), full.names = T)) %>% 
+  mutate(spp = basename(filename),
+         data = map(filename, read_excel)) %>% 
+  unnest(data) %>% 
+  janitor::clean_names() %>% 
+  rename(Ano = ano) %>% 
+  mutate(Ano = coalesce(Ano, ano_corte)) %>% 
+  group_by(spp, Ano) %>% 
+  summarize(PesoVivo = sum(peso_vivo_kilogramos, na.rm = T))
 
 # Create a function to wrap around mcsy2
 # for each species to run it in parallel
@@ -40,14 +51,22 @@ my_mcsy2 <- function(data) {
   return(results)
 }
 
-plan(multisession, workers = parallel::detectCores() - 2)
+parameters <- dat %>% 
+  group_by(spp) %>% 
+  nest() %>% 
+  mutate(cmsy_output = map(data, my_mcsy2)) %>% 
+  select(-data, species = spp) %>% 
+  unnest()
+
+# plan(multisession, workers = parallel::detectCores() - 2)
 parameters <- cona %>% 
   mutate(spp = NombreCientifico) %>% 
   group_by(NombreCientifico) %>% 
   nest() %>% 
-  mutate(cmsy_output = future_map(data, my_mcsy2)) %>% 
+  mutate(cmsy_output = map(data, my_mcsy2)) %>% 
   select(-data, species = NombreCientifico) %>% 
-  unnest()
+  unnest(cmsy_output)
+# plan(sequential)
 
 write.csv(x = parameters,
           file = here("data", "parameters.csv"),
