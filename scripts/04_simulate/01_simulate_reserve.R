@@ -12,14 +12,24 @@ R_vec <- c(0.1, 0.3, 1) # Reserve-size scenarios
 
 # Load data
 # MHW effects
-effects <- readRDS(here("data", "MHW_effects_on_inverts.rds"))
+effects <- readRDS(here("data", "MHW_effects_on_inverts.rds")) %>% 
+  mutate(species = case_when(species == "Haliotis spp" ~ "Abalones",
+                             species == "Parastichopus parvimensis" ~ "Cucumbers",
+                             species == "Sea urchins" ~ "Urchins"))
 
 # Population parameters
-parameters <- read.csv(here("data", "parameters.csv"),
+parameters <- read.csv(here("data", "updated_parameters_2013.csv"),
                        stringsAsFactors = F) %>% 
-  mutate(species = ifelse(species == "Strongylocentrotus spp", "Sea urchins", species)) %>% 
-  left_join(effects, by = "species") %>% 
-  replace_na(replace = list(MHW_effect = 0))
+  filter(!species == "Flatfish") %>% 
+    left_join(effects, by = "species") %>% 
+  replace_na(replace = list(MHW_effect = 0)) %>% 
+  mutate(species = fct_relevel(species,
+                               "Sheephead",
+                               "Sandbass",
+                               "Lobster",
+                               "Abalones", 
+                               "Urchins",
+                               "Cucumbers"))
 
 # Heatwave models
 cc_scenarios <- readRDS(here("data", "MHW_models.rds")) %>% 
@@ -57,18 +67,6 @@ cc_simulations <- expand_grid(parameters, cc_scenarios, R = R_vec) %>%
   unnest(cols = simulation) %>% 
   mutate(Xnorm = X / k_mean)
 
-# Combine deterministic and CC results
-results <- rbind(simulations,
-                 cc_simulations)
-
-summarize_results <- results %>% 
-  group_by(species, time, SSP, R) %>% 
-  summarize(x_mean = mean(Xnorm, na.rm = T),
-            x_2.5 = quantile(Xnorm, 0.05, na.rm = T),
-            x_97.5 = quantile(Xnorm, 0.95, na.rm = T)) %>% 
-  mutate(R = paste0("Reserve = ", R * 100, "%"),
-         R = fct_relevel(R, "Reserve = 100%", after = Inf))
-
 (time_to_k <- simulations %>% 
     mutate(R = paste0("Reserve = ", R * 100, "%"),
            R = fct_relevel(R, "Reserve = 100%", after = Inf)) %>% 
@@ -85,18 +83,32 @@ summarize_results <- results %>%
     ggplot(aes(x = species, y = time, fill = R)) +
     geom_col(position = "dodge", color = "black") +
     scale_fill_brewer(palette = "Set1") +
-    coord_flip() +
-    ggtheme_plot() +
+    theme_bw() +
     labs(y = "Recovery time",
          x = "Species") +
     guides(fill = guide_legend(title = "")) +
     theme(legend.justification = c(1, 1),
-          legend.position = c(1, 1)))
+          legend.position = c(1, 1),
+          legend.background = element_blank(),
+          legend.title = element_blank()))
 
 lazy_ggsave(plot = time_to_k,
             file = "time_to_k",
             height = 10,
             width = 12)
+
+# Combine deterministic and CC results
+results <- rbind(simulations,
+                 cc_simulations)
+
+summarize_results <- results %>% 
+  group_by(species, time, SSP, R) %>% 
+  summarize(x_mean = mean(Xnorm, na.rm = T),
+            sd = sd(Xnorm, na.rm = T),
+            x_2.5 = quantile(Xnorm, 0.05, na.rm = T),
+            x_97.5 = quantile(Xnorm, 0.95, na.rm = T)) %>% 
+  mutate(R = paste0("Reserve = ", R * 100, "%"),
+         R = fct_relevel(R, "Reserve = 100%", after = Inf))
 
 (recovery_plot <- summarize_results %>% 
     ggplot(aes(x = time, y = x_mean, color = species, fill = species)) +
@@ -112,7 +124,7 @@ lazy_ggsave(plot = time_to_k,
           legend.position = "bottom",
           text = element_text(size = 10)) +
     guides(color = guide_legend(title = "Species",
-                                ncol = 2,
+                                ncol = 6,
                                 label.theme = element_text(face = "italic",
                                                            size = 8)),
            fill = guide_legend(title = "Species")) +
@@ -123,3 +135,11 @@ lazy_ggsave(plot = recovery_plot,
            file = "recovery_plot",
            height = 20,
            width = 16)
+
+
+p <- cowplot::plot_grid(recovery_plot, time_to_k, ncol = 1, rel_heights = c(2, 1))
+
+lazy_ggsave(plot = p,
+            filename = "time_of_recovery_panel",
+            height = 20,
+            width = 16)

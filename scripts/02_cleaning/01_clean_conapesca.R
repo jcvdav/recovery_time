@@ -6,7 +6,7 @@ library(furrr)
 library(tidyverse)
 
 # Define list of specie sof interest
-spp_interest <- c("Panulirus interruptus", "Haliotis spp", "Strongylocentrotus spp", "Parastichopus parvimensis", "Magastraea spp", "Paralabrax nebulifer", "Paralabrax maculatofasciatus", "Semmycosyphus pulcher", "Atractoscion nobilis", "Flatfish", "Stereolepis gigas", "Caulolatilus princeps")
+spp_interest <- c("Panulirus interruptus", "Haliotis spp", "Strongylocentrotus spp", "Parastichopus parvimensis", "Magastraea spp", "Paralabrax nebulifer", "Paralabrax maculatofasciatus", "Semicossyphus pulcher", "Atractoscion nobilis", "Flatfish", "Stereolepis gigas")
 
 # Define groups of species
 ## Abalone
@@ -19,7 +19,8 @@ strongilocentrotus <- c("Strongylocentrotus purpuratus", "Strongylocentrotus fra
 office <- c("Ensenada", "El rosario", "Guerrero negro", "Cd. constitucion", "Bahia asuncion", "Bahia de los angeles", "Bahia tortugas", "San carlos", "Punta abreojos", "Isla cedros", "Pto. adolgo lopez mateos", "Tijuana", "San quintin", "Villa de jesus maria")
 
 # Read conapesca data
-cona <- readRDS(here("raw_data", "conapesca.rds")) %>% 
+cona <- #readRDS(here("raw_data", "conapesca.rds")) %>% 
+  readRDS("/Users/juancarlosvillasenorderbez/GitHub/data_mex_fisheries/data/mex_landings/clean/mex_conapesca_avisos_2000_2019.rds") %>% 
   mutate_at(.vars = vars(Estado, NombreCientifico), as.character) %>% 
   filter(Estado %in% c("Baja california", "Baja california sur")) %>% 
   filter(Oficina %in% office) %>% 
