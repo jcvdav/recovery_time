@@ -4,6 +4,7 @@
 # library(startR)
 library(here)
 library(datalimited2)
+# library(readxl)
 library(furrr)
 library(tidyverse)
 
@@ -50,6 +51,7 @@ parameters <- cona %>%
   select(-data, species = taxa) %>% 
   unnest()
 plan(sequential)
+
 
 write.csv(x = parameters,
           file = here("data", "updated_parameters_2013.csv"),

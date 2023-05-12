@@ -21,7 +21,7 @@ effects <- readRDS(here("data", "MHW_effects_on_inverts.rds")) %>%
 parameters <- read.csv(here("data", "updated_parameters_2013.csv"),
                        stringsAsFactors = F) %>% 
   filter(!species == "Flatfish") %>% 
-    left_join(effects, by = "species") %>% 
+  left_join(effects, by = "species") %>% 
   replace_na(replace = list(MHW_effect = 0)) %>% 
   mutate(species = fct_relevel(species,
                                "Sheephead",
@@ -67,13 +67,35 @@ cc_simulations <- expand_grid(parameters, cc_scenarios, R = R_vec) %>%
   unnest(cols = simulation) %>% 
   mutate(Xnorm = X / k_mean)
 
+# Combine deterministic and CC results
+results <- rbind(simulations,
+                 cc_simulations)
+
+equilibria <- expand_grid(parameters, R = R_vec) %>%
+  mutate(equil = (k_mean * (r_mean - (fmsy_lo * (1 - R)))) / r_mean,
+         equil_90 = 0.90 * equil) %>%
+  select(species, R, equil, equil_90)
+
+summarize_results <- results %>% 
+  group_by(species, time, SSP, R) %>% 
+  summarize(x_mean = mean(Xnorm, na.rm = T),
+            x_2.5 = quantile(Xnorm, 0.05, na.rm = T),
+            x_97.5 = quantile(Xnorm, 0.95, na.rm = T)) %>% 
+  mutate(R = paste0("Reserve = ", R * 100, "%"),
+         R = fct_relevel(R, "Reserve = 100%", after = Inf))
+
 (time_to_k <- simulations %>% 
+    left_join(equilibria, by = c("species", "R")) %>% 
     mutate(R = paste0("Reserve = ", R * 100, "%"),
-           R = fct_relevel(R, "Reserve = 100%", after = Inf)) %>% 
-    group_by(species, R) %>%
-    mutate(max_s_r = 0.95 * max(X)) %>% 
-    ungroup() %>% 
-    filter(X > max_s_r) %>% 
+           R = fct_relevel(R, "Reserve = 100%", after = Inf),
+           # species = case_when(species == "Caulolatilus princeps" ~ "Whitefish",
+           #                     species == "Haliotis spp" ~ "Abalone",
+           #                     species == "Panulirus interruptus" ~ "Lobster",
+           #                     species == "Paralabrax nebulifer" ~ "Sand bass",
+           #                     species == "Parastichopus parvimensis" ~ "Sea cucumber",
+           #                     T ~ species),
+           species = fct_relevel(species, "Sheephead", "Sandbass", "Lobster", "Abalones", "Urchins", "Cucumbers")) %>% 
+    filter(X >= equil_90) %>% 
     group_by(species, R) %>% 
     slice_head(n = 1) %>% 
     ungroup() %>%
@@ -81,7 +103,7 @@ cc_simulations <- expand_grid(parameters, cc_scenarios, R = R_vec) %>%
     filter(time > 2) %>% 
     complete(species, R, fill = list(time = 0)) %>% 
     ggplot(aes(x = species, y = time, fill = R)) +
-    geom_col(position = "dodge", color = "black") +
+    geom_col(position = "dodge", color = "black", alpha = 0.75) +
     scale_fill_brewer(palette = "Set1") +
     theme_bw() +
     labs(y = "Recovery time",
@@ -111,9 +133,17 @@ summarize_results <- results %>%
          R = fct_relevel(R, "Reserve = 100%", after = Inf))
 
 (recovery_plot <- summarize_results %>% 
+    ungroup() %>% 
+    mutate(#species = case_when(species == "Caulolatilus princeps" ~ "Whitefish",
+                               # species == "Haliotis spp" ~ "Abalone",
+                               # species == "Panulirus interruptus" ~ "Lobster",
+                               # species == "Paralabrax nebulifer" ~ "Sand bass",
+                               # species == "Parastichopus parvimensis" ~ "Sea cucumber",
+                               # T ~ species),
+           species = fct_relevel(species, "Sheephead", "Sandbass", "Lobster", "Abalones", "Urchins", "Cucumbers")) %>%  
     ggplot(aes(x = time, y = x_mean, color = species, fill = species)) +
     geom_ribbon(aes(ymin = x_2.5, ymax = x_97.5), alpha = 0.25, size = 0.1) +
-    geom_line(size = 1) +
+    geom_line(linewidth = 1) +
     theme_bw() +
     scale_y_continuous(labels = scales::percent,
                        limits = c(0, 1)) +
@@ -143,3 +173,4 @@ lazy_ggsave(plot = p,
             filename = "time_of_recovery_panel",
             height = 20,
             width = 16)
+
