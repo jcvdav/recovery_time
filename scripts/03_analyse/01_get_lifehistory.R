@@ -1,10 +1,9 @@
 #   get life history params   #
 
 # Load libraries
-# library(startR)
+library(startR)
 library(here)
 library(datalimited2)
-# library(readxl)
 library(furrr)
 library(tidyverse)
 
@@ -57,15 +56,3 @@ write.csv(x = parameters,
           file = here("data", "updated_parameters_2013.csv"),
           row.names = F)
 
-(catches_ts <- ggplot(data = cona,
-       mapping = aes(x = year_cut, y = landed_weight / 1e3)) +
-  geom_line() +
-  geom_point(fill = "steelblue", color = "black", size = 2, shape = 21) +
-  facet_wrap(~taxa, scales = "free_y") +
-  # ggtheme_plot() +
-  labs(x = "Year", y = "Landings\n(Metric Tones)"))
-
-ggsave(plot = catches_ts,
-       filename = here("results", "img", "catches_ts.tiff"),
-       width = 6,
-       height = 4)

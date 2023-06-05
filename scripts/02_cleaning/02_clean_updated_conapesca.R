@@ -117,8 +117,7 @@ species_codes <- c(abalone_codes,
                    urchin_codes,
                    cucumber_codes,
                    vieja_codes,
-                   sandbass_codes,
-                   flatfish_codes)
+                   sandbass_codes)
 
 # Read conapesca data
 cona_clean <- readRDS(file) %>% 
